@@ -25,7 +25,7 @@ impl Sm4Cbc {
     fn new(key: &[u8]) -> Self {
         match Sm4CipherMode::new(key, Mode::Cbc) {
             Ok(sm4_cipher_mode) => {
-                println!("Sm4CiperMode object created successfully!");
+                // println!("Sm4CiperMode object created successfully!");
                 Self { cipher: sm4_cipher_mode }
             }
             Err(err) => {
