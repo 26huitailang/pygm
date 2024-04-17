@@ -49,19 +49,6 @@ impl Sm4Cbc {
     }
 }
 
-#[pyfunction]
-fn sm4_cbc_encrypt(key_hex: String, plaintext: String, iv_hex: String) -> PyResult<String> {
-    let key_bytes = Vec::from_hex(&key_hex).map_err(|err| MyFromHexError(err))?;
-    let iv_bytes = Vec::from_hex(&iv_hex).map_err(|err| MyFromHexError(err))?;
-
-    let sm4_cbc = Sm4Cbc::new(&key_bytes);
-    let ciphertext = sm4_cbc.encrypt(&plaintext, &iv_bytes).map_err(|err| MySm4Error(err))?;
-
-    // let result_string = String::from_utf8(ciphertext)
-    //     .map_err(|err| PyUnicodeDecodeError::new_err(format!("Invalid UTF-8 sequence: {}", err)))?;
-    let result_string = encode(ciphertext);
-    Ok(result_string)
-}
 
 struct MyFromHexError(FromHexError);
 
@@ -90,11 +77,23 @@ impl From<MySm4Error> for PyErr {
     }
 }
 
-#[pyfunction]
-fn sm4_cbc_decrypt(key_hex: String, ciphertext: String, iv_hex: String) -> PyResult<String> {
-    let key_bytes = Vec::from_hex(&key_hex).map_err(|err| MyFromHexError(err))?;
-    let ciphertext_bytes = Vec::from_hex(&ciphertext).map_err(|err| MyFromHexError(err))?;
-    let iv_bytes = Vec::from_hex(&iv_hex).map_err(|err| MyFromHexError(err))?;
+#[pyfunction(signature = (key_hex = "0123456789ABCDEF0123456789ABCDEF", plaintext = "1qaz@WSX3edc", iv_hex = "00000000000000000000000000000000"))]
+fn sm4_cbc_encrypt(key_hex: &str, plaintext: &str, iv_hex: &str) -> PyResult<String> {
+    let key_bytes = Vec::from_hex(key_hex).map_err(|err| MyFromHexError(err))?;
+    let iv_bytes = Vec::from_hex(iv_hex).map_err(|err| MyFromHexError(err))?;
+
+    let sm4_cbc = Sm4Cbc::new(&key_bytes);
+    let ciphertext = sm4_cbc.encrypt(plaintext, &iv_bytes).map_err(|err| MySm4Error(err))?;
+
+    let result_string = encode(ciphertext);
+    Ok(result_string)
+}
+
+#[pyfunction(signature = (key_hex = "0123456789ABCDEF0123456789ABCDEF", ciphertext = "1qaz@WSX3edc", iv_hex = "00000000000000000000000000000000"))]
+fn sm4_cbc_decrypt(key_hex: &str, ciphertext: &str, iv_hex: &str) -> PyResult<String> {
+    let key_bytes = Vec::from_hex(key_hex).map_err(|err| MyFromHexError(err))?;
+    let ciphertext_bytes = Vec::from_hex(ciphertext).map_err(|err| MyFromHexError(err))?;
+    let iv_bytes = Vec::from_hex(iv_hex).map_err(|err| MyFromHexError(err))?;
 
     let sm4_cbc = Sm4Cbc::new(&key_bytes);
     let plaintext = sm4_cbc.decrypt(&ciphertext_bytes, &iv_bytes).map_err(|err| MySm4Error(err))?;
@@ -128,17 +127,19 @@ mod tests {
             "FEDCBA9876543210FEDCBA9876543210",
             "ABCDEF0123456789ABCDEF0123456789",
             "1qaz2wsx#EDC",
+            "root,./123",
         ];
 
         for plaintext in plaintext_list {
             // 对明文进行加密
-            let encrypted_hex = sm4_cbc_encrypt(KEY_HEX.to_owned(), plaintext.to_owned(), IV_HEX.to_owned())
+            let encrypted_hex = sm4_cbc_encrypt(KEY_HEX, plaintext, IV_HEX)
                 .expect("Encryption failed");
             // 对加密后的密文进行解密
-            let decrypted_hex = sm4_cbc_decrypt(KEY_HEX.to_owned(), encrypted_hex, IV_HEX.to_owned())
+            let decrypted_hex = sm4_cbc_decrypt(KEY_HEX, &encrypted_hex, IV_HEX)
                 .expect("Decryption failed");
 
-            println!("{} {}", decrypted_hex, plaintext);
+            println!("===================");
+            dbg!("{} {} {}", encrypted_hex, decrypted_hex.to_owned(), plaintext.to_owned());
             assert_eq!(decrypted_hex, plaintext);
         }
     }
